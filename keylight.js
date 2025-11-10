@@ -26,11 +26,21 @@ export class KeyLight {
     async getLights() {
         try {
             const message = Soup.Message.new('GET', `${this.baseUrl}/lights`);
-            const bytes = await this._httpSession.send_and_read_async(
-                message,
-                GLib.PRIORITY_DEFAULT,
-                null
-            );
+            const bytes = await new Promise((resolve, reject) => {
+                this._httpSession.send_and_read_async(
+                    message,
+                    GLib.PRIORITY_DEFAULT,
+                    null,
+                    (session, result) => {
+                        try {
+                            const bytes = session.send_and_read_finish(result);
+                            resolve(bytes);
+                        } catch (e) {
+                            reject(e);
+                        }
+                    }
+                );
+            });
 
             if (message.status_code !== 200) {
                 throw new Error(`HTTP ${message.status_code}`);
@@ -72,11 +82,21 @@ export class KeyLight {
                 new GLib.Bytes(JSON.stringify(payload))
             );
 
-            await this._httpSession.send_and_read_async(
-                message,
-                GLib.PRIORITY_DEFAULT,
-                null
-            );
+            await new Promise((resolve, reject) => {
+                this._httpSession.send_and_read_async(
+                    message,
+                    GLib.PRIORITY_DEFAULT,
+                    null,
+                    (session, result) => {
+                        try {
+                            session.send_and_read_finish(result);
+                            resolve();
+                        } catch (e) {
+                            reject(e);
+                        }
+                    }
+                );
+            });
 
             return message.status_code === 200;
         } catch (e) {
@@ -91,11 +111,21 @@ export class KeyLight {
     async identify() {
         try {
             const message = Soup.Message.new('POST', `${this.baseUrl}/identify`);
-            await this._httpSession.send_and_read_async(
-                message,
-                GLib.PRIORITY_DEFAULT,
-                null
-            );
+            await new Promise((resolve, reject) => {
+                this._httpSession.send_and_read_async(
+                    message,
+                    GLib.PRIORITY_DEFAULT,
+                    null,
+                    (session, result) => {
+                        try {
+                            session.send_and_read_finish(result);
+                            resolve();
+                        } catch (e) {
+                            reject(e);
+                        }
+                    }
+                );
+            });
             return message.status_code === 200;
         } catch (e) {
             console.error(`Error identifying light: ${e.message}`);
@@ -109,11 +139,21 @@ export class KeyLight {
     async getAccessoryInfo() {
         try {
             const message = Soup.Message.new('GET', `${this.baseUrl}/accessory-info`);
-            const bytes = await this._httpSession.send_and_read_async(
-                message,
-                GLib.PRIORITY_DEFAULT,
-                null
-            );
+            const bytes = await new Promise((resolve, reject) => {
+                this._httpSession.send_and_read_async(
+                    message,
+                    GLib.PRIORITY_DEFAULT,
+                    null,
+                    (session, result) => {
+                        try {
+                            const bytes = session.send_and_read_finish(result);
+                            resolve(bytes);
+                        } catch (e) {
+                            reject(e);
+                        }
+                    }
+                );
+            });
 
             if (message.status_code !== 200) {
                 return null;
