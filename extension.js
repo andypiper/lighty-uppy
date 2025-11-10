@@ -37,6 +37,11 @@ class Indicator extends PanelMenu.Button {
         // Load lights from settings
         this._loadLights();
 
+        // Listen for settings changes to reload lights
+        this._settingsChangedId = this._settings.connect('changed::light-ips', () => {
+            this._loadLights();
+        });
+
         // Update state periodically
         this._scheduleUpdate();
     }
@@ -442,6 +447,11 @@ class Indicator extends PanelMenu.Button {
         if (this._updateTimeoutId) {
             clearTimeout(this._updateTimeoutId);
             this._updateTimeoutId = null;
+        }
+
+        if (this._settingsChangedId) {
+            this._settings.disconnect(this._settingsChangedId);
+            this._settingsChangedId = null;
         }
 
         super.destroy();
