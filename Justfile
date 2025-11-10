@@ -32,7 +32,7 @@ install: compile-schemas
 # Test extension in nested GNOME Shell using Mutter Devkit (GNOME 49+)
 test:
     @echo "Launching GNOME Shell in nested Mutter Devkit session..."
-    @dbus-run-session /usr/libexec/mutter-devkit -- gnome-shell --wayland
+    @dbus-run-session mutter --wayland --devkit -- gnome-shell
 
 # Install and test
 install-and-test: install test
