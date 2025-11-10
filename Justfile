@@ -60,6 +60,32 @@ release VERSION message="":
 full-release VERSION message="": (update-version VERSION) pack (release VERSION message)
     @echo "Release v{{VERSION}} complete!"
 
+# Publish extension to extensions.gnome.org
+publish username password_file="": pack
+    #!/usr/bin/env bash
+    extensionfile="{{UUID}}.shell-extension.zip"
+
+    if [ ! -f "$extensionfile" ]; then
+        echo "Error: Extension package not found. Run 'just pack' first."
+        exit 1
+    fi
+
+    if [ -z "{{username}}" ]; then
+        echo "Error: Username required. Usage: just publish username@example.com /path/to/password-file"
+        exit 1
+    fi
+
+    if [ -z "{{password_file}}" ]; then
+        echo "Publishing $extensionfile to extensions.gnome.org as {{username}}..."
+        echo "You will be prompted for your password."
+        gnome-extensions upload --user "{{username}}" --accept-tos "$extensionfile"
+    else
+        echo "Publishing $extensionfile to extensions.gnome.org as {{username}}..."
+        gnome-extensions upload --user "{{username}}" --password-file "{{password_file}}" --accept-tos "$extensionfile"
+    fi
+
+    echo "Extension published successfully!"
+
 # Clean build artifacts
 clean:
     @echo "Cleaning build artifacts..."
