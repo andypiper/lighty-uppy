@@ -15,7 +15,7 @@ export class KeyLight {
         this.baseUrl = `http://${ipAddress}:${KEYLIGHT_PORT}/elgato`;
 
         this._httpSession = new Soup.Session({
-            timeout: 5,
+            timeout: 10,
         });
     }
 

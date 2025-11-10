@@ -279,7 +279,7 @@ export default class LightyUppyPreferences extends ExtensionPreferences {
 
         // Info button
         const infoButton = new Gtk.Button({
-            icon_name: 'info-symbolic',
+            icon_name: 'dialog-information-symbolic',
             valign: Gtk.Align.CENTER,
             css_classes: ['flat'],
             tooltip_text: 'Show device information',

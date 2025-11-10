@@ -12,6 +12,8 @@ const ELGATO_SERVICE = '_elg._tcp';
  */
 export async function discoverKeyLights() {
     try {
+        console.log('[Discovery] Starting mDNS discovery for Elgato Key Lights...');
+
         // Run avahi-browse to find _elg._tcp services
         // -ptr: resolve, print all, terminate after cache exhausted
         const proc = Gio.Subprocess.new(
@@ -22,15 +24,23 @@ export async function discoverKeyLights() {
         // Use synchronous communicate since avahi-browse terminates quickly
         const [, stdout, stderr] = proc.communicate_utf8(null, null);
 
+        console.log(`[Discovery] avahi-browse stdout: ${stdout}`);
+        if (stderr) {
+            console.log(`[Discovery] avahi-browse stderr: ${stderr}`);
+        }
+
         if (!proc.get_successful()) {
-            console.error(`avahi-browse failed: ${stderr}`);
+            console.error(`[Discovery] avahi-browse failed with exit code, stderr: ${stderr}`);
             return [];
         }
 
         // Parse avahi-browse output
-        return parseAvahiOutput(stdout);
+        const lights = parseAvahiOutput(stdout);
+        console.log(`[Discovery] Found ${lights.length} light(s):`, JSON.stringify(lights));
+        return lights;
     } catch (e) {
-        console.error(`Error discovering lights: ${e.message}`);
+        console.error(`[Discovery] Error discovering lights: ${e.message}`);
+        console.error(`[Discovery] Stack trace:`, e.stack);
         // avahi-browse might not be installed
         return [];
     }

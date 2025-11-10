@@ -111,6 +111,7 @@ class Indicator extends PanelMenu.Button {
                     light.displayName = light.ipAddress;
                 }
                 light.accessoryInfo = info;
+                light.isOnline = info !== null;
             }
 
             // Rebuild light controls
@@ -264,13 +265,15 @@ class Indicator extends PanelMenu.Button {
     _createLightSection(light, index) {
         const section = new PopupMenu.PopupMenuSection();
 
-        // Light name with display name or IP
+        // Light name with display name or IP, and offline indicator
         const displayName = light.displayName || light.ipAddress;
-        const nameItem = new PopupMenu.PopupMenuItem(displayName, {
+        const fullName = light.isOnline ? displayName : `${displayName} (Offline)`;
+        const nameItem = new PopupMenu.PopupMenuItem(fullName, {
             reactive: false,
             can_focus: false,
         });
         section.addMenuItem(nameItem);
+        section._nameItem = nameItem;
 
         // Details submenu if accessory info is available
         if (light.accessoryInfo) {
@@ -307,6 +310,7 @@ class Indicator extends PanelMenu.Button {
 
         // On/Off switch
         const powerItem = new PopupMenu.PopupSwitchMenuItem('Power', false);
+        powerItem.sensitive = light.isOnline;
         const powerSignalId = powerItem.connect('toggled', (item) => {
             this._setPower(index, item.state);
         });
@@ -333,6 +337,7 @@ class Indicator extends PanelMenu.Button {
             reactive: false,
         });
         brightnessItem.add_child(brightnessBox);
+        brightnessItem.sensitive = light.isOnline;
         section.addMenuItem(brightnessItem);
 
         // Temperature slider
@@ -358,10 +363,12 @@ class Indicator extends PanelMenu.Button {
             reactive: false,
         });
         tempItem.add_child(tempBox);
+        tempItem.sensitive = light.isOnline;
         section.addMenuItem(tempItem);
 
         // Identify button
         const identifyItem = new PopupMenu.PopupMenuItem('Identify (Flash)');
+        identifyItem.sensitive = light.isOnline;
         const identifySignalId = identifyItem.connect('activate', () => {
             this._identify(index);
         });
@@ -371,8 +378,10 @@ class Indicator extends PanelMenu.Button {
         section._powerSwitch = powerItem;
         section._powerSignalId = powerSignalId;
         section._brightnessSlider = brightnessSlider;
+        section._brightnessItem = brightnessItem;
         section._brightnessSignalId = brightnessSignalId;
         section._tempSlider = tempSlider;
+        section._tempItem = tempItem;
         section._tempSignalId = tempSignalId;
         section._identifySignalId = identifySignalId;
         section._identifyItem = identifyItem;
@@ -407,6 +416,24 @@ class Indicator extends PanelMenu.Button {
         // Verify we still have the same section (not rebuilt)
         if (section !== this._lightsSections[index]) {
             return;
+        }
+
+        // Update online/offline status
+        const wasOnline = light.isOnline;
+        const isNowOnline = state !== null;
+        light.isOnline = isNowOnline;
+
+        // If status changed, update UI
+        if (wasOnline !== isNowOnline) {
+            const displayName = light.displayName || light.ipAddress;
+            const fullName = isNowOnline ? displayName : `${displayName} (Offline)`;
+            section._nameItem.label.text = fullName;
+
+            // Enable/disable controls based on online status
+            section._powerSwitch.sensitive = isNowOnline;
+            section._brightnessItem.sensitive = isNowOnline;
+            section._tempItem.sensitive = isNowOnline;
+            section._identifyItem.sensitive = isNowOnline;
         }
 
         if (state && section._powerSwitch) {
