@@ -190,17 +190,13 @@ just logs                # Watch extension logs
 just clean               # Remove build artifacts
 ```
 
-**Note**: Testing with `just test` requires the devkit tools on GNOME 49+:
+**Note**: Testing with `just test` requires Mutter Devkit on GNOME 49+ (Fedora 43+):
 ```bash
-# Fedora
+# Fedora (included in mutter-devel)
 sudo dnf install mutter-devel
-
-# Arch
-sudo pacman -S mutter
-
-# Ubuntu/Debian
-# Check if mutter packages include devkit support
 ```
+
+The test command launches Mutter Devkit which opens a window. Use the **Launchers** menu in the devkit window to start GNOME Shell and test your extension.
 
 ### Making a Release
 

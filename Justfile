@@ -29,10 +29,11 @@ install: compile-schemas
     @echo "Restart GNOME Shell (Alt+F2, type 'r', Enter on X11 or logout/login on Wayland)"
     @echo "Then enable with: gnome-extensions enable {{UUID}}"
 
-# Test extension in nested GNOME Shell (requires mutter-devel on Fedora for devkit)
+# Test extension in nested GNOME Shell using Mutter Devkit (GNOME 49+)
 test:
-    @echo "Testing extension in nested shell..."
-    @dbus-run-session gnome-shell --wayland --devkit
+    @echo "Launching Mutter Devkit..."
+    @echo "Once the window opens, use the Launchers menu to start GNOME Shell"
+    @/usr/libexec/mutter-devkit
 
 # Install and test
 install-and-test: install test
