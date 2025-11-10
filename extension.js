@@ -16,10 +16,11 @@ import {KeyLight} from './keylight.js';
 
 const Indicator = GObject.registerClass(
 class Indicator extends PanelMenu.Button {
-    _init(settings) {
+    _init(settings, extension) {
         super._init(0.0, 'Lighty Uppy');
 
         this._settings = settings;
+        this._extension = extension;
         this._lights = [];
         this._updateTimeoutId = null;
 
@@ -62,7 +63,7 @@ class Indicator extends PanelMenu.Button {
         const settingsItem = new PopupMenu.PopupMenuItem('Settings');
         settingsItem.connect('activate', () => {
             this.menu.close();
-            // TODO: Open preferences
+            this._openPreferences();
         });
         this.menu.addMenuItem(settingsItem);
     }
@@ -246,6 +247,12 @@ class Indicator extends PanelMenu.Button {
         await light.identify();
     }
 
+    _openPreferences() {
+        if (this._extension) {
+            this._extension.openPreferences();
+        }
+    }
+
     _scheduleUpdate() {
         if (this._updateTimeoutId) {
             return;
@@ -271,7 +278,7 @@ class Indicator extends PanelMenu.Button {
 export default class LightyUppyExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
-        this._indicator = new Indicator(this._settings);
+        this._indicator = new Indicator(this._settings, this);
         Main.panel.addToStatusArea(this.uuid, this._indicator);
     }
 
