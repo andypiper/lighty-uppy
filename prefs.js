@@ -4,6 +4,7 @@
 import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
@@ -53,7 +54,15 @@ export default class LightyUppyPreferences extends ExtensionPreferences {
             css_classes: ['suggested-action'],
         });
 
+        let discoveryInProgress = false;
+
         discoverButton.connect('clicked', async () => {
+            // Prevent concurrent discoveries
+            if (discoveryInProgress) {
+                return;
+            }
+
+            discoveryInProgress = true;
             discoverButton.sensitive = false;
             discoverButton.label = 'Discovering...';
 
@@ -106,6 +115,7 @@ export default class LightyUppyPreferences extends ExtensionPreferences {
             } catch (e) {
                 console.error('Discovery error:', e);
             } finally {
+                discoveryInProgress = false;
                 discoverButton.sensitive = true;
                 discoverButton.label = 'Discover Lights';
             }
@@ -208,7 +218,10 @@ export default class LightyUppyPreferences extends ExtensionPreferences {
                             statusLabel.label = `✓ Connected to ${displayName}`;
 
                             // Close after short delay
-                            setTimeout(() => dialog.destroy(), 1000);
+                            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
+                                dialog.destroy();
+                                return GLib.SOURCE_REMOVE;
+                            });
                         } else {
                             // Failed to connect
                             statusLabel.label = '✗ Could not connect to light';

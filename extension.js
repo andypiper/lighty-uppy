@@ -4,6 +4,7 @@
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
 
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -23,6 +24,7 @@ class Indicator extends PanelMenu.Button {
         this._extension = extension;
         this._lights = [];
         this._updateTimeoutId = null;
+        this._loadInProgress = false;
 
         // Panel icon - using weather-clear-symbolic as a light/sun icon
         const icon = new St.Icon({
@@ -48,11 +50,14 @@ class Indicator extends PanelMenu.Button {
 
     _buildMenu() {
         this._lightsSections = [];
+        this._refreshSignalId = null;
+        this._settingsSignalId = null;
 
         // Add refresh button at top
         const refreshItem = new PopupMenu.PopupMenuItem('Refresh');
-        refreshItem.connect('activate', () => this._updateAllLights());
+        this._refreshSignalId = refreshItem.connect('activate', () => this._updateAllLights());
         this.menu.addMenuItem(refreshItem);
+        this._refreshItem = refreshItem;
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
@@ -74,42 +79,80 @@ class Indicator extends PanelMenu.Button {
 
         // Settings button
         const settingsItem = new PopupMenu.PopupMenuItem('Settings');
-        settingsItem.connect('activate', () => {
+        this._settingsSignalId = settingsItem.connect('activate', () => {
             this.menu.close();
             this._openPreferences();
         });
         this.menu.addMenuItem(settingsItem);
+        this._settingsItem = settingsItem;
     }
 
     async _loadLights() {
-        const ips = this._settings.get_strv('light-ips');
-
-        this._lights = ips.map(ip => new KeyLight(ip, ip));
-
-        // Fetch accessory info for each light to get display names
-        for (const light of this._lights) {
-            const info = await light.getAccessoryInfo();
-            if (info && info.displayName) {
-                light.displayName = info.displayName;
-            } else if (info && info.productName) {
-                light.displayName = info.productName;
-            } else {
-                light.displayName = light.ipAddress;
-            }
-            light.accessoryInfo = info;
+        // Prevent concurrent loads
+        if (this._loadInProgress) {
+            return;
         }
 
-        // Rebuild light controls
-        this._rebuildLightControls();
+        this._loadInProgress = true;
 
-        // Update state
-        this._updateAllLights();
+        try {
+            const ips = this._settings.get_strv('light-ips');
+
+            this._lights = ips.map(ip => new KeyLight(ip, ip));
+
+            // Fetch accessory info for each light to get display names
+            for (const light of this._lights) {
+                const info = await light.getAccessoryInfo();
+                if (info && info.displayName) {
+                    light.displayName = info.displayName;
+                } else if (info && info.productName) {
+                    light.displayName = info.productName;
+                } else {
+                    light.displayName = light.ipAddress;
+                }
+                light.accessoryInfo = info;
+            }
+
+            // Rebuild light controls
+            this._rebuildLightControls();
+
+            // Update state
+            this._updateAllLights();
+        } finally {
+            this._loadInProgress = false;
+        }
     }
 
     _rebuildLightControls() {
-        // Remove old sections
-        this._lightsSections.forEach(section => section.destroy());
+        // Disconnect signals and remove old sections
+        this._lightsSections.forEach(section => {
+            // Disconnect all signal handlers to prevent memory leaks
+            if (section._powerSwitch && section._powerSignalId) {
+                section._powerSwitch.disconnect(section._powerSignalId);
+            }
+            if (section._brightnessSlider && section._brightnessSignalId) {
+                section._brightnessSlider.disconnect(section._brightnessSignalId);
+            }
+            if (section._tempSlider && section._tempSignalId) {
+                section._tempSlider.disconnect(section._tempSignalId);
+            }
+            if (section._identifyItem && section._identifySignalId) {
+                section._identifyItem.disconnect(section._identifySignalId);
+            }
+            section.destroy();
+        });
         this._lightsSections = [];
+
+        // Disconnect control all section signals
+        if (this._controlAllSection._allPowerSwitch && this._controlAllSection._allPowerSignalId) {
+            this._controlAllSection._allPowerSwitch.disconnect(this._controlAllSection._allPowerSignalId);
+        }
+        if (this._controlAllSection._allBrightnessSlider && this._controlAllSection._allBrightnessSignalId) {
+            this._controlAllSection._allBrightnessSlider.disconnect(this._controlAllSection._allBrightnessSignalId);
+        }
+        if (this._controlAllSection._allTempSlider && this._controlAllSection._allTempSignalId) {
+            this._controlAllSection._allTempSlider.disconnect(this._controlAllSection._allTempSignalId);
+        }
 
         // Clear control all section
         this._controlAllSection.removeAll();
@@ -157,7 +200,7 @@ class Indicator extends PanelMenu.Button {
 
         // All On/Off switch
         const allPowerItem = new PopupMenu.PopupSwitchMenuItem('All Lights Power', false);
-        allPowerItem.connect('toggled', (item) => {
+        const allPowerSignalId = allPowerItem.connect('toggled', (item) => {
             this._setAllPower(item.state);
         });
         this._controlAllSection.addMenuItem(allPowerItem);
@@ -172,7 +215,7 @@ class Indicator extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
         });
         const allBrightnessSlider = new Slider.Slider(0.5);
-        allBrightnessSlider.connect('notify::value', () => {
+        const allBrightnessSignalId = allBrightnessSlider.connect('notify::value', () => {
             this._setAllBrightness(allBrightnessSlider.value * 100);
         });
 
@@ -195,7 +238,7 @@ class Indicator extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
         });
         const allTempSlider = new Slider.Slider(0.5);
-        allTempSlider.connect('notify::value', () => {
+        const allTempSignalId = allTempSlider.connect('notify::value', () => {
             const temp = 143 + (allTempSlider.value * (344 - 143));
             this._setAllTemperature(temp);
         });
@@ -209,10 +252,13 @@ class Indicator extends PanelMenu.Button {
         allTempItem.add_child(allTempBox);
         this._controlAllSection.addMenuItem(allTempItem);
 
-        // Store references
+        // Store references and signal IDs for cleanup
         this._controlAllSection._allPowerSwitch = allPowerItem;
+        this._controlAllSection._allPowerSignalId = allPowerSignalId;
         this._controlAllSection._allBrightnessSlider = allBrightnessSlider;
+        this._controlAllSection._allBrightnessSignalId = allBrightnessSignalId;
         this._controlAllSection._allTempSlider = allTempSlider;
+        this._controlAllSection._allTempSignalId = allTempSignalId;
     }
 
     _createLightSection(light, index) {
@@ -261,7 +307,7 @@ class Indicator extends PanelMenu.Button {
 
         // On/Off switch
         const powerItem = new PopupMenu.PopupSwitchMenuItem('Power', false);
-        powerItem.connect('toggled', (item) => {
+        const powerSignalId = powerItem.connect('toggled', (item) => {
             this._setPower(index, item.state);
         });
         section.addMenuItem(powerItem);
@@ -276,7 +322,7 @@ class Indicator extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
         });
         const brightnessSlider = new Slider.Slider(0.5);
-        brightnessSlider.connect('notify::value', () => {
+        const brightnessSignalId = brightnessSlider.connect('notify::value', () => {
             this._setBrightness(index, brightnessSlider.value * 100);
         });
 
@@ -299,7 +345,7 @@ class Indicator extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
         });
         const tempSlider = new Slider.Slider(0.5);
-        tempSlider.connect('notify::value', () => {
+        const tempSignalId = tempSlider.connect('notify::value', () => {
             // Map 0-1 to 143-344 (2900K-7000K)
             const temp = 143 + (tempSlider.value * (344 - 143));
             this._setTemperature(index, temp);
@@ -316,15 +362,20 @@ class Indicator extends PanelMenu.Button {
 
         // Identify button
         const identifyItem = new PopupMenu.PopupMenuItem('Identify (Flash)');
-        identifyItem.connect('activate', () => {
+        const identifySignalId = identifyItem.connect('activate', () => {
             this._identify(index);
         });
         section.addMenuItem(identifyItem);
 
-        // Store references for updates
+        // Store references and signal IDs for updates and cleanup
         section._powerSwitch = powerItem;
+        section._powerSignalId = powerSignalId;
         section._brightnessSlider = brightnessSlider;
+        section._brightnessSignalId = brightnessSignalId;
         section._tempSlider = tempSlider;
+        section._tempSignalId = tempSignalId;
+        section._identifySignalId = identifySignalId;
+        section._identifyItem = identifyItem;
 
         return section;
     }
@@ -336,13 +387,29 @@ class Indicator extends PanelMenu.Button {
     }
 
     async _updateLight(index) {
+        // Validate index before async operation
+        if (index >= this._lights.length || index >= this._lightsSections.length) {
+            return;
+        }
+
         const light = this._lights[index];
         const section = this._lightsSections[index];
 
-        if (!section || !section._powerSwitch) return;
+        if (!light || !section || !section._powerSwitch) return;
 
         const state = await light.getLights();
-        if (state) {
+
+        // Re-validate after async operation in case array was rebuilt
+        if (index >= this._lights.length || index >= this._lightsSections.length) {
+            return;
+        }
+
+        // Verify we still have the same section (not rebuilt)
+        if (section !== this._lightsSections[index]) {
+            return;
+        }
+
+        if (state && section._powerSwitch) {
             // Update UI without triggering callbacks
             section._powerSwitch.setToggleState(state.on === 1);
             section._brightnessSlider.value = state.brightness / 100;
@@ -387,40 +454,49 @@ class Indicator extends PanelMenu.Button {
     }
 
     async _setAllPower(on) {
+        const promises = [];
         for (let i = 0; i < this._lights.length; i++) {
             const section = this._lightsSections[i];
             if (section && section._powerSwitch) {
                 const brightness = section._brightnessSlider.value * 100;
                 const temp = 143 + (section._tempSlider.value * (344 - 143));
-                await this._lights[i].setLights(on, brightness, temp);
+                promises.push(this._lights[i].setLights(on, brightness, temp));
             }
         }
+        // Execute all in parallel
+        await Promise.all(promises);
         // Update individual switches
         this._updateAllLights();
     }
 
     async _setAllBrightness(brightness) {
+        const promises = [];
         for (let i = 0; i < this._lights.length; i++) {
             const section = this._lightsSections[i];
             if (section && section._powerSwitch) {
                 const on = section._powerSwitch.state;
                 const temp = 143 + (section._tempSlider.value * (344 - 143));
-                await this._lights[i].setLights(on, brightness, temp);
+                promises.push(this._lights[i].setLights(on, brightness, temp));
             }
         }
+        // Execute all in parallel
+        await Promise.all(promises);
         // Update individual sliders
         this._updateAllLights();
     }
 
     async _setAllTemperature(temperature) {
+        const promises = [];
         for (let i = 0; i < this._lights.length; i++) {
             const section = this._lightsSections[i];
             if (section && section._powerSwitch) {
                 const on = section._powerSwitch.state;
                 const brightness = section._brightnessSlider.value * 100;
-                await this._lights[i].setLights(on, brightness, temperature);
+                promises.push(this._lights[i].setLights(on, brightness, temperature));
             }
         }
+        // Execute all in parallel
+        await Promise.all(promises);
         // Update individual sliders
         this._updateAllLights();
     }
@@ -436,22 +512,33 @@ class Indicator extends PanelMenu.Button {
             return;
         }
 
-        this._updateTimeoutId = setTimeout(() => {
-            this._updateTimeoutId = null;
+        this._updateTimeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 5, () => {
             this._updateAllLights();
             this._scheduleUpdate();
-        }, 5000); // Update every 5 seconds
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     destroy() {
         if (this._updateTimeoutId) {
-            clearTimeout(this._updateTimeoutId);
+            GLib.Source.remove(this._updateTimeoutId);
             this._updateTimeoutId = null;
         }
 
         if (this._settingsChangedId) {
             this._settings.disconnect(this._settingsChangedId);
             this._settingsChangedId = null;
+        }
+
+        // Disconnect menu item signals
+        if (this._refreshItem && this._refreshSignalId) {
+            this._refreshItem.disconnect(this._refreshSignalId);
+            this._refreshSignalId = null;
+        }
+
+        if (this._settingsItem && this._settingsSignalId) {
+            this._settingsItem.disconnect(this._settingsSignalId);
+            this._settingsSignalId = null;
         }
 
         super.destroy();
