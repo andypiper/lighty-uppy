@@ -193,10 +193,10 @@ just clean               # Remove build artifacts
 ### Making a Release
 
 ```bash
-just update-version 3                    # Update to version 3
-just full-release 3 "New features"       # Build and create GitHub release
-just publish user@example.com            # Publish to extensions.gnome.org (will prompt for password)
-just publish user@example.com ~/pw.txt   # Publish with password from file
+just update-version 3                              # Update to version 3
+just full-release 3 "New features"                 # Build and create GitHub release
+just publish user@example.com                      # Publish to extensions.gnome.org (will prompt for password)
+just publish-with-password user@example.com ~/pw   # Publish with password from file
 ```
 
 ## Contributing

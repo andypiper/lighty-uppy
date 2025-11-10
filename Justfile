@@ -44,47 +44,24 @@ update-version VERSION:
     @echo "Version updated to {{VERSION}}"
 
 # Create GitHub release
-release VERSION message="":
-    #!/usr/bin/env bash
-    if [ ! -f "{{UUID}}.shell-extension.zip" ]; then
-        echo "Error: Extension package not found. Run 'just pack' first."
-        exit 1
-    fi
-    if [ -z "{{message}}" ]; then
-        gh release create "v{{VERSION}}" "{{UUID}}.shell-extension.zip" --title "v{{VERSION}}"
-    else
-        gh release create "v{{VERSION}}" "{{UUID}}.shell-extension.zip" --title "v{{VERSION}}" --notes "{{message}}"
-    fi
+release VERSION message="": pack
+    @echo "Creating GitHub release v{{VERSION}}..."
+    @gh release create "v{{VERSION}}" "{{UUID}}.shell-extension.zip" --title "v{{VERSION}}" {{ if message != "" { "--notes \"" + message + "\"" } else { "" } }}
 
 # Full release: update version, pack, and create GitHub release
 full-release VERSION message="": (update-version VERSION) pack (release VERSION message)
     @echo "Release v{{VERSION}} complete!"
 
-# Publish extension to extensions.gnome.org
-publish username password_file="": pack
-    #!/usr/bin/env bash
-    extensionfile="{{UUID}}.shell-extension.zip"
+# Publish extension to extensions.gnome.org (interactive password)
+publish username: pack
+    @echo "Publishing {{UUID}}.shell-extension.zip to extensions.gnome.org as {{username}}..."
+    @echo "You will be prompted for your password."
+    @gnome-extensions upload --user "{{username}}" --accept-tos "{{UUID}}.shell-extension.zip"
 
-    if [ ! -f "$extensionfile" ]; then
-        echo "Error: Extension package not found. Run 'just pack' first."
-        exit 1
-    fi
-
-    if [ -z "{{username}}" ]; then
-        echo "Error: Username required. Usage: just publish username@example.com /path/to/password-file"
-        exit 1
-    fi
-
-    if [ -z "{{password_file}}" ]; then
-        echo "Publishing $extensionfile to extensions.gnome.org as {{username}}..."
-        echo "You will be prompted for your password."
-        gnome-extensions upload --user "{{username}}" --accept-tos "$extensionfile"
-    else
-        echo "Publishing $extensionfile to extensions.gnome.org as {{username}}..."
-        gnome-extensions upload --user "{{username}}" --password-file "{{password_file}}" --accept-tos "$extensionfile"
-    fi
-
-    echo "Extension published successfully!"
+# Publish extension to extensions.gnome.org (with password file)
+publish-with-password username password_file: pack
+    @echo "Publishing {{UUID}}.shell-extension.zip to extensions.gnome.org as {{username}}..."
+    @gnome-extensions upload --user "{{username}}" --password-file "{{password_file}}" --accept-tos "{{UUID}}.shell-extension.zip"
 
 # Clean build artifacts
 clean:
