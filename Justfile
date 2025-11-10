@@ -44,12 +44,21 @@ update-version VERSION:
     @echo "Version updated to {{VERSION}}"
 
 # Create GitHub release
-release VERSION message="": pack
+release VERSION: pack
     @echo "Creating GitHub release v{{VERSION}}..."
-    @gh release create "v{{VERSION}}" "{{UUID}}.shell-extension.zip" --title "v{{VERSION}}" {{ if message != "" { "--notes \"" + message + "\"" } else { "" } }}
+    @gh release create "v{{VERSION}}" "{{UUID}}.shell-extension.zip" --title "v{{VERSION}}"
+
+# Create GitHub release with notes
+release-with-notes VERSION notes: pack
+    @echo "Creating GitHub release v{{VERSION}}..."
+    @gh release create "v{{VERSION}}" "{{UUID}}.shell-extension.zip" --title "v{{VERSION}}" --notes "{{notes}}"
 
 # Full release: update version, pack, and create GitHub release
-full-release VERSION message="": (update-version VERSION) pack (release VERSION message)
+full-release VERSION: (update-version VERSION) pack (release VERSION)
+    @echo "Release v{{VERSION}} complete!"
+
+# Full release with notes: update version, pack, and create GitHub release with notes
+full-release-with-notes VERSION notes: (update-version VERSION) pack (release-with-notes VERSION notes)
     @echo "Release v{{VERSION}} complete!"
 
 # Publish extension to extensions.gnome.org (interactive password)
