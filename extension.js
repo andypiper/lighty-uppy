@@ -23,9 +23,9 @@ class Indicator extends PanelMenu.Button {
         this._lights = [];
         this._updateTimeoutId = null;
 
-        // Panel icon
+        // Panel icon - using weather-clear-symbolic as a light/sun icon
         const icon = new St.Icon({
-            icon_name: 'display-brightness-symbolic',
+            icon_name: 'weather-clear-symbolic',
             style_class: 'system-status-icon',
         });
         this.add_child(icon);
