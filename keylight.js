@@ -128,29 +128,3 @@ export class KeyLight {
         }
     }
 }
-
-/**
- * Discover Key Lights on the network using Avahi/mDNS
- * Note: This is a simplified version. Full mDNS discovery requires Avahi bindings
- * For now, we'll use a manual IP list or scan common addresses
- */
-export async function discoverKeyLights() {
-    // TODO: Implement proper mDNS discovery using Avahi
-    // For now, return empty array - user can configure IPs in preferences
-    const lights = [];
-
-    // Try common local network ranges
-    // This is a simplified approach - proper implementation would use Avahi
-    const baseIp = '192.168.1.'; // Common network
-    const testAddresses = [];
-
-    // Test a small range (modify based on your network)
-    for (let i = 1; i < 255; i++) {
-        testAddresses.push(`${baseIp}${i}`);
-    }
-
-    // Note: This is very slow and not recommended for production
-    // Better to use Avahi or manual configuration
-
-    return lights;
-}
