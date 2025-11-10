@@ -136,12 +136,12 @@ export default class LightyUppyPreferences extends ExtensionPreferences {
             contentArea.margin_end = 12;
 
             const entry = new Gtk.Entry({
-                placeholder_text: '192.168.1.100',
+                placeholder_text: 'e.g. 192.168.1.100 or elgato-key-light.local',
                 hexpand: true,
             });
 
             contentArea.append(new Gtk.Label({
-                label: 'Enter the IP address of your Key Light:',
+                label: 'Enter the IP address or hostname of your Key Light:',
                 xalign: 0,
             }));
             contentArea.append(entry);

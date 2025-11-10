@@ -54,19 +54,33 @@ A simple GNOME Shell extension for controlling Elgato Key Light devices directly
 
 ## Configuration
 
-### Finding Your Key Light IP Address
+### Finding Your Key Light IP Address or Hostname
 
-You can find your Key Light's IP address using mDNS/Avahi:
+Multiple methods to find your Key Light:
 
+**Using Avahi (Linux):**
 ```bash
-avahi-browse -atrp | grep _elg._tcp
+avahi-browse -ptr _elg._tcp
 ```
 
-Or check your router's DHCP client list for devices named "Elgato Key Light".
+**Using dns-sd (macOS/Windows with Bonjour):**
+```bash
+dns-sd -B _elg._tcp
+```
+
+**Other methods:**
+- Check your router's DHCP client list for devices named "Elgato Key Light"
+- Use the Elgato Control Center mobile app (shows IP in device settings)
+- Check your network scanner app
+
+**Using hostnames (recommended):**
+Key Lights advertise mDNS hostnames like `elgato-key-light-1a2b.local`. Using hostnames instead of IP addresses means the extension will continue working even if your DHCP server assigns a different IP address.
 
 ### Adding Lights
 
-#### Automatic Discovery (Recommended)
+You have two options for adding Key Lights:
+
+#### Option 1: Automatic Discovery (Recommended)
 
 1. Click the light bulb icon in the top panel
 2. Click "Settings"
@@ -85,15 +99,24 @@ sudo dnf install avahi-tools
 sudo pacman -S avahi
 ```
 
-#### Manual Configuration
+**Note**: mDNS discovery can be unreliable on some networks. If discovery doesn't find your lights, use manual configuration instead.
+
+#### Option 2: Manual Configuration (Most Reliable)
 
 If automatic discovery doesn't work or you prefer manual configuration:
 
 1. Click the light bulb icon in the top panel
 2. Click "Settings"
 3. Click "Add Manually"
-4. Enter the IP address of your Key Light
+4. Enter either:
+   - **IP address**: e.g., `192.168.1.100`
+   - **Hostname**: e.g., `elgato-key-light-1a2b.local`
 5. Click "Add"
+
+**Finding your Key Light address:**
+- Check your router's DHCP client list
+- Use `avahi-browse -ptr _elg._tcp` to see both IP and hostname
+- Check the Elgato Control Center app on your phone/computer
 
 The extension will automatically connect to your lights and display their current state.
 
