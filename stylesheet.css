@@ -1,0 +1,45 @@
+/* Lighty Uppy Stylesheet */
+
+.lighty-uppy-indicator {
+    padding: 0 6px;
+}
+
+.lighty-uppy-menu {
+    min-width: 300px;
+}
+
+.lighty-uppy-light-section {
+    padding: 10px;
+}
+
+.lighty-uppy-light-name {
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.lighty-uppy-control-row {
+    padding: 5px 0;
+}
+
+.lighty-uppy-label {
+    min-width: 80px;
+}
+
+.lighty-uppy-slider {
+    width: 200px;
+}
+
+.lighty-uppy-button {
+    margin: 5px 0;
+}
+
+.lighty-uppy-separator {
+    height: 1px;
+    margin: 10px 0;
+}
+
+.lighty-uppy-no-lights {
+    padding: 20px;
+    text-align: center;
+    font-style: italic;
+}

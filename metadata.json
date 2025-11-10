@@ -1,0 +1,14 @@
+{
+  "name": "Lighty Uppy",
+  "description": "Simple control for Elgato Key Light devices from GNOME Shell",
+  "uuid": "lighty-uppy@andypiper.org",
+  "shell-version": [
+    "46",
+    "47",
+    "48",
+    "49"
+  ],
+  "version": 1,
+  "url": "https://github.com/andypiper/lighty-uppy",
+  "settings-schema": "org.gnome.shell.extensions.lighty-uppy"
+}

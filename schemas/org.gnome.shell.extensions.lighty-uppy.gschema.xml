@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.lighty-uppy" path="/org/gnome/shell/extensions/lighty-uppy/">
+    <key name="light-ips" type="as">
+      <default>[]</default>
+      <summary>Key Light IP Addresses</summary>
+      <description>List of IP addresses for Elgato Key Light devices</description>
+    </key>
+  </schema>
+</schemalist>
