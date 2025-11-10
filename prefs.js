@@ -7,6 +7,8 @@ import Gio from 'gi://Gio';
 
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
+import {discoverKeyLights, isAvahiAvailable} from './discovery.js';
+
 export default class LightyUppyPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
@@ -42,11 +44,78 @@ export default class LightyUppyPreferences extends ExtensionPreferences {
 
         group.add(listBox);
 
-        // Add button
-        const addButton = new Gtk.Button({
-            label: 'Add Light',
+        // Discover button
+        const discoverButton = new Gtk.Button({
+            label: 'Discover Lights',
             halign: Gtk.Align.CENTER,
             margin_top: 12,
+            css_classes: ['suggested-action'],
+        });
+
+        discoverButton.connect('clicked', async () => {
+            discoverButton.sensitive = false;
+            discoverButton.label = 'Discovering...';
+
+            try {
+                const lights = await discoverKeyLights();
+
+                if (lights.length === 0) {
+                    const noLightsDialog = new Gtk.MessageDialog({
+                        transient_for: window,
+                        modal: true,
+                        message_type: Gtk.MessageType.INFO,
+                        buttons: Gtk.ButtonsType.OK,
+                        text: 'No Lights Found',
+                        secondary_text: isAvahiAvailable()
+                            ? 'No Elgato Key Lights were discovered on your network. Make sure your lights are powered on and connected to the same network.'
+                            : 'avahi-browse is not installed. Install avahi-utils package to enable automatic discovery, or add lights manually.',
+                    });
+                    noLightsDialog.present();
+                    noLightsDialog.connect('response', () => noLightsDialog.destroy());
+                } else {
+                    // Add discovered lights
+                    const currentIps = settings.get_strv('light-ips');
+                    let addedCount = 0;
+
+                    for (const light of lights) {
+                        if (!currentIps.includes(light.address)) {
+                            currentIps.push(light.address);
+                            const row = this._createIpRow(light.address, settings, listBox);
+                            listBox.append(row);
+                            addedCount++;
+                        }
+                    }
+
+                    if (addedCount > 0) {
+                        settings.set_strv('light-ips', currentIps);
+                    }
+
+                    const resultDialog = new Gtk.MessageDialog({
+                        transient_for: window,
+                        modal: true,
+                        message_type: Gtk.MessageType.INFO,
+                        buttons: Gtk.ButtonsType.OK,
+                        text: 'Discovery Complete',
+                        secondary_text: `Found ${lights.length} light(s), added ${addedCount} new light(s).`,
+                    });
+                    resultDialog.present();
+                    resultDialog.connect('response', () => resultDialog.destroy());
+                }
+            } catch (e) {
+                console.error('Discovery error:', e);
+            } finally {
+                discoverButton.sensitive = true;
+                discoverButton.label = 'Discover Lights';
+            }
+        });
+
+        group.add(discoverButton);
+
+        // Add button (manual)
+        const addButton = new Gtk.Button({
+            label: 'Add Manually',
+            halign: Gtk.Align.CENTER,
+            margin_top: 6,
         });
 
         addButton.connect('clicked', () => {

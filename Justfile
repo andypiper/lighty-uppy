@@ -16,13 +16,14 @@ pack: compile-schemas
     @echo "Packing extension..."
     @gnome-extensions pack --force \
         --extra-source=keylight.js \
+        --extra-source=discovery.js \
         --extra-source=schemas
 
 # Install extension locally
 install: compile-schemas
     @echo "Installing extension..."
     @mkdir -p ~/.local/share/gnome-shell/extensions/{{UUID}}
-    @cp -r extension.js keylight.js prefs.js metadata.json stylesheet.css schemas \
+    @cp -r extension.js keylight.js discovery.js prefs.js metadata.json stylesheet.css schemas \
         ~/.local/share/gnome-shell/extensions/{{UUID}}/
     @echo "Extension installed to ~/.local/share/gnome-shell/extensions/{{UUID}}"
     @echo "Restart GNOME Shell (Alt+F2, type 'r', Enter on X11 or logout/login on Wayland)"

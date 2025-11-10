@@ -63,9 +63,32 @@ Or check your router's DHCP client list for devices named "Elgato Key Light".
 
 ### Adding Lights
 
+#### Automatic Discovery (Recommended)
+
 1. Click the light bulb icon in the top panel
 2. Click "Settings"
-3. Click "Add Light"
+3. Click "Discover Lights"
+4. The extension will automatically find all Key Lights on your network
+
+**Note**: Automatic discovery requires `avahi-utils` to be installed:
+```bash
+# On Debian/Ubuntu
+sudo apt install avahi-utils
+
+# On Fedora
+sudo dnf install avahi-tools
+
+# On Arch
+sudo pacman -S avahi
+```
+
+#### Manual Configuration
+
+If automatic discovery doesn't work or you prefer manual configuration:
+
+1. Click the light bulb icon in the top panel
+2. Click "Settings"
+3. Click "Add Manually"
 4. Enter the IP address of your Key Light
 5. Click "Add"
 
@@ -123,9 +146,21 @@ journalctl -f -o cat /usr/bin/gnome-shell
    ```
 3. Make sure your firewall allows outgoing connections to port 9123
 
-### Lights not discovered automatically
+### Automatic discovery not working
 
-Currently, the extension requires manual IP configuration. Automatic mDNS discovery is planned for a future release.
+**Check if avahi-utils is installed:**
+```bash
+which avahi-browse
+```
+
+If not found, install the package for your distribution (see Adding Lights section).
+
+**Verify lights are discoverable:**
+```bash
+avahi-browse -ptr _elg._tcp
+```
+
+This should show your Key Light devices. If nothing appears, check that your lights are on the same network and powered on.
 
 ## Development
 
@@ -133,6 +168,7 @@ The extension consists of:
 
 - `extension.js` - Main extension with UI
 - `keylight.js` - Key Light API client
+- `discovery.js` - Avahi mDNS discovery for automatic light detection
 - `prefs.js` - Preferences window
 - `metadata.json` - Extension metadata
 - `schemas/` - GSettings schema for configuration

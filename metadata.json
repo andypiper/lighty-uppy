@@ -8,7 +8,7 @@
     "48",
     "49"
   ],
-  "version": 2,
+  "version": 3,
   "url": "https://github.com/andypiper/lighty-uppy",
   "settings-schema": "org.gnome.shell.extensions.lighty-uppy"
 }
