@@ -196,7 +196,7 @@ just clean               # Remove build artifacts
 sudo dnf install mutter-devel
 ```
 
-The test command launches Mutter Devkit which opens a window. Use the **Launchers** menu in the devkit window to start GNOME Shell and test your extension.
+The test command launches Mutter Devkit with GNOME Shell running inside it automatically, providing a nested session for testing your extension.
 
 ### Making a Release
 
