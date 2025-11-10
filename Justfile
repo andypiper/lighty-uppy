@@ -29,6 +29,22 @@ install: compile-schemas
     @echo "Restart GNOME Shell (Alt+F2, type 'r', Enter on X11 or logout/login on Wayland)"
     @echo "Then enable with: gnome-extensions enable {{UUID}}"
 
+# Test extension in nested GNOME Shell (requires mutter-devkit on GNOME 49+)
+test:
+    @echo "Testing extension in nested shell..."
+    @if command -v mutter-devkit > /dev/null 2>&1; then \
+        dbus-run-session -- gnome-shell --devkit; \
+    else \
+        echo "Error: mutter-devkit not found. Install it first:"; \
+        echo "  Fedora: sudo dnf install mutter-devkit"; \
+        echo "  Arch: sudo pacman -S mutter-devkit"; \
+        echo "  Ubuntu/Debian: Check if available in your repos"; \
+        exit 1; \
+    fi
+
+# Install and test
+install-and-test: install test
+
 # Update version in metadata.json
 update-version VERSION:
     @echo "Updating version to {{VERSION}}..."

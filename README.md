@@ -180,12 +180,25 @@ The extension consists of:
 ```bash
 just --list              # Show all available commands
 just install             # Install extension locally
+just test                # Test in nested GNOME Shell (requires mutter-devkit)
+just install-and-test    # Install and test
 just pack                # Package for distribution
 just enable              # Enable extension
 just disable             # Disable extension
 just uninstall           # Remove extension
 just logs                # Watch extension logs
 just clean               # Remove build artifacts
+```
+
+**Note**: Testing with `just test` requires the `mutter-devkit` package on GNOME 49+:
+```bash
+# Fedora
+sudo dnf install mutter-devkit
+
+# Arch
+sudo pacman -S mutter-devkit
+
+# Ubuntu/Debian - check your distribution's repos
 ```
 
 ### Making a Release
