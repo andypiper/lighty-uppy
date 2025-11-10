@@ -190,15 +190,16 @@ just logs                # Watch extension logs
 just clean               # Remove build artifacts
 ```
 
-**Note**: Testing with `just test` requires the `mutter-devkit` package on GNOME 49+:
+**Note**: Testing with `just test` requires the devkit tools on GNOME 49+:
 ```bash
 # Fedora
-sudo dnf install mutter-devkit
+sudo dnf install mutter-devel
 
 # Arch
-sudo pacman -S mutter-devkit
+sudo pacman -S mutter
 
-# Ubuntu/Debian - check your distribution's repos
+# Ubuntu/Debian
+# Check if mutter packages include devkit support
 ```
 
 ### Making a Release
