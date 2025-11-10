@@ -8,7 +8,10 @@ A simple GNOME Shell extension for controlling Elgato Key Light devices directly
 - 🌡️ Adjust color temperature (2900K-7000K)
 - 💡 Toggle lights on/off
 - 🔍 Identify lights (flash to locate)
-- 📱 Support for multiple Key Light devices
+- 📱 Support for multiple Key Light devices with independent control
+- 🎛️ Control All Lights - sync settings across multiple lights
+- 📋 View light details (product name, firmware, serial number)
+- 🏷️ Displays actual light names instead of IP addresses
 - 🎯 Clean, minimal interface
 
 ## Requirements
@@ -97,7 +100,13 @@ The extension will automatically connect to your lights and display their curren
 ## Usage
 
 1. Click the light bulb icon in the GNOME Shell top panel
-2. For each configured light:
+2. **For multiple lights** - Use the "Control All Lights" section at the top to:
+   - Toggle all lights on/off simultaneously
+   - Sync brightness across all lights
+   - Sync color temperature across all lights
+3. **For individual lights**:
+   - Light name is displayed (e.g., "Elgato Key Light Mini")
+   - Click **Details** to view product info, firmware version, serial number, and IP
    - Use the **Power** switch to turn the light on/off
    - Drag the **Brightness** slider to adjust brightness (0-100%)
    - Drag the **Temperature** slider to adjust warmth (warm orange to cool blue)
