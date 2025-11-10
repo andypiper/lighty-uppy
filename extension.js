@@ -51,6 +51,14 @@ class Indicator extends PanelMenu.Button {
 
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
+        // Control All Lights section (will be populated after lights load)
+        this._controlAllSection = new PopupMenu.PopupMenuSection();
+        this.menu.addMenuItem(this._controlAllSection);
+
+        this._controlAllSeparator = new PopupMenu.PopupSeparatorMenuItem();
+        this.menu.addMenuItem(this._controlAllSeparator);
+        this._controlAllSeparator.visible = false;
+
         // Placeholder for no lights
         this._noLightsLabel = new PopupMenu.PopupMenuItem('No lights configured', {
             reactive: false,
@@ -68,10 +76,23 @@ class Indicator extends PanelMenu.Button {
         this.menu.addMenuItem(settingsItem);
     }
 
-    _loadLights() {
+    async _loadLights() {
         const ips = this._settings.get_strv('light-ips');
 
         this._lights = ips.map(ip => new KeyLight(ip, ip));
+
+        // Fetch accessory info for each light to get display names
+        for (const light of this._lights) {
+            const info = await light.getAccessoryInfo();
+            if (info && info.displayName) {
+                light.displayName = info.displayName;
+            } else if (info && info.productName) {
+                light.displayName = info.productName;
+            } else {
+                light.displayName = light.ipAddress;
+            }
+            light.accessoryInfo = info;
+        }
 
         // Rebuild light controls
         this._rebuildLightControls();
@@ -85,12 +106,24 @@ class Indicator extends PanelMenu.Button {
         this._lightsSections.forEach(section => section.destroy());
         this._lightsSections = [];
 
+        // Clear control all section
+        this._controlAllSection.removeAll();
+
         if (this._lights.length === 0) {
             this._noLightsLabel.visible = true;
+            this._controlAllSeparator.visible = false;
             return;
         }
 
         this._noLightsLabel.visible = false;
+
+        // Add Control All section if multiple lights
+        if (this._lights.length > 1) {
+            this._buildControlAllSection();
+            this._controlAllSeparator.visible = true;
+        } else {
+            this._controlAllSeparator.visible = false;
+        }
 
         // Create controls for each light
         this._lights.forEach((light, index) => {
@@ -110,15 +143,116 @@ class Indicator extends PanelMenu.Button {
         });
     }
 
+    _buildControlAllSection() {
+        const titleItem = new PopupMenu.PopupMenuItem('Control All Lights', {
+            reactive: false,
+            can_focus: false,
+        });
+        this._controlAllSection.addMenuItem(titleItem);
+
+        // All On/Off switch
+        const allPowerItem = new PopupMenu.PopupSwitchMenuItem('All Lights Power', false);
+        allPowerItem.connect('toggled', (item) => {
+            this._setAllPower(item.state);
+        });
+        this._controlAllSection.addMenuItem(allPowerItem);
+
+        // All Brightness slider
+        const allBrightnessBox = new St.BoxLayout({
+            vertical: false,
+            x_expand: true,
+        });
+        const allBrightnessLabel = new St.Label({
+            text: 'All Brightness',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        const allBrightnessSlider = new Slider.Slider(0.5);
+        allBrightnessSlider.connect('notify::value', () => {
+            this._setAllBrightness(allBrightnessSlider.value * 100);
+        });
+
+        allBrightnessBox.add_child(allBrightnessLabel);
+        allBrightnessBox.add_child(allBrightnessSlider);
+
+        const allBrightnessItem = new PopupMenu.PopupBaseMenuItem({
+            reactive: false,
+        });
+        allBrightnessItem.add_child(allBrightnessBox);
+        this._controlAllSection.addMenuItem(allBrightnessItem);
+
+        // All Temperature slider
+        const allTempBox = new St.BoxLayout({
+            vertical: false,
+            x_expand: true,
+        });
+        const allTempLabel = new St.Label({
+            text: 'All Temperature',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        const allTempSlider = new Slider.Slider(0.5);
+        allTempSlider.connect('notify::value', () => {
+            const temp = 143 + (allTempSlider.value * (344 - 143));
+            this._setAllTemperature(temp);
+        });
+
+        allTempBox.add_child(allTempLabel);
+        allTempBox.add_child(allTempSlider);
+
+        const allTempItem = new PopupMenu.PopupBaseMenuItem({
+            reactive: false,
+        });
+        allTempItem.add_child(allTempBox);
+        this._controlAllSection.addMenuItem(allTempItem);
+
+        // Store references
+        this._controlAllSection._allPowerSwitch = allPowerItem;
+        this._controlAllSection._allBrightnessSlider = allBrightnessSlider;
+        this._controlAllSection._allTempSlider = allTempSlider;
+    }
+
     _createLightSection(light, index) {
         const section = new PopupMenu.PopupMenuSection();
 
-        // Light name/IP
-        const nameItem = new PopupMenu.PopupMenuItem(light.ipAddress, {
+        // Light name with display name or IP
+        const displayName = light.displayName || light.ipAddress;
+        const nameItem = new PopupMenu.PopupMenuItem(displayName, {
             reactive: false,
             can_focus: false,
         });
         section.addMenuItem(nameItem);
+
+        // Details submenu if accessory info is available
+        if (light.accessoryInfo) {
+            const detailsItem = new PopupMenu.PopupSubMenuMenuItem('Details');
+
+            if (light.accessoryInfo.productName) {
+                detailsItem.menu.addMenuItem(new PopupMenu.PopupMenuItem(
+                    `Product: ${light.accessoryInfo.productName}`,
+                    { reactive: false }
+                ));
+            }
+
+            if (light.accessoryInfo.firmwareVersion) {
+                detailsItem.menu.addMenuItem(new PopupMenu.PopupMenuItem(
+                    `Firmware: ${light.accessoryInfo.firmwareVersion}`,
+                    { reactive: false }
+                ));
+            }
+
+            if (light.accessoryInfo.serialNumber) {
+                detailsItem.menu.addMenuItem(new PopupMenu.PopupMenuItem(
+                    `Serial: ${light.accessoryInfo.serialNumber}`,
+                    { reactive: false }
+                ));
+            }
+
+            detailsItem.menu.addMenuItem(new PopupMenu.PopupMenuItem(
+                `IP: ${light.ipAddress}`,
+                { reactive: false }
+            ));
+
+            section.addMenuItem(detailsItem);
+        }
 
         // On/Off switch
         const powerItem = new PopupMenu.PopupSwitchMenuItem('Power', false);
@@ -245,6 +379,45 @@ class Indicator extends PanelMenu.Button {
     async _identify(index) {
         const light = this._lights[index];
         await light.identify();
+    }
+
+    async _setAllPower(on) {
+        for (let i = 0; i < this._lights.length; i++) {
+            const section = this._lightsSections[i];
+            if (section && section._powerSwitch) {
+                const brightness = section._brightnessSlider.value * 100;
+                const temp = 143 + (section._tempSlider.value * (344 - 143));
+                await this._lights[i].setLights(on, brightness, temp);
+            }
+        }
+        // Update individual switches
+        this._updateAllLights();
+    }
+
+    async _setAllBrightness(brightness) {
+        for (let i = 0; i < this._lights.length; i++) {
+            const section = this._lightsSections[i];
+            if (section && section._powerSwitch) {
+                const on = section._powerSwitch.state;
+                const temp = 143 + (section._tempSlider.value * (344 - 143));
+                await this._lights[i].setLights(on, brightness, temp);
+            }
+        }
+        // Update individual sliders
+        this._updateAllLights();
+    }
+
+    async _setAllTemperature(temperature) {
+        for (let i = 0; i < this._lights.length; i++) {
+            const section = this._lightsSections[i];
+            if (section && section._powerSwitch) {
+                const on = section._powerSwitch.state;
+                const brightness = section._brightnessSlider.value * 100;
+                await this._lights[i].setLights(on, brightness, temperature);
+            }
+        }
+        // Update individual sliders
+        this._updateAllLights();
     }
 
     _openPreferences() {
