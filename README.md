@@ -26,24 +26,27 @@ A simple GNOME Shell extension for controlling Elgato Key Light devices directly
    cd lighty-uppy
    ```
 
-2. Install the extension:
+2. Install using Just (recommended):
    ```bash
-   mkdir -p ~/.local/share/gnome-shell/extensions/lighty-uppy@andypiper.org
-   cp -r * ~/.local/share/gnome-shell/extensions/lighty-uppy@andypiper.org/
+   just install
    ```
 
-3. Compile the schema:
+   Or manually:
    ```bash
+   mkdir -p ~/.local/share/gnome-shell/extensions/lighty-uppy@andypiper.org
+   cp -r extension.js keylight.js prefs.js metadata.json stylesheet.css schemas \
+       ~/.local/share/gnome-shell/extensions/lighty-uppy@andypiper.org/
    glib-compile-schemas ~/.local/share/gnome-shell/extensions/lighty-uppy@andypiper.org/schemas/
    ```
 
-4. Restart GNOME Shell:
+3. Restart GNOME Shell:
    - On X11: Press `Alt+F2`, type `r`, and press Enter
    - On Wayland: Log out and log back in
 
-5. Enable the extension:
+4. Enable the extension:
    ```bash
    gnome-extensions enable lighty-uppy@andypiper.org
+   # Or use: just enable
    ```
 
 ## Configuration
@@ -134,6 +137,29 @@ The extension consists of:
 - `metadata.json` - Extension metadata
 - `schemas/` - GSettings schema for configuration
 - `stylesheet.css` - UI styling
+- `Justfile` - Build and installation commands
+
+### Available Just Commands
+
+```bash
+just --list              # Show all available commands
+just install             # Install extension locally
+just test                # Test in nested GNOME Shell
+just install-and-test    # Install and test
+just pack                # Package for distribution
+just enable              # Enable extension
+just disable             # Disable extension
+just uninstall           # Remove extension
+just logs                # Watch extension logs
+just clean               # Remove build artifacts
+```
+
+### Making a Release
+
+```bash
+just update-version 3           # Update to version 3
+just full-release 3 "New features"  # Build and create GitHub release
+```
 
 ## Contributing
 
