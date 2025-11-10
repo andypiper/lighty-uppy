@@ -277,11 +277,24 @@ export default class LightyUppyPreferences extends ExtensionPreferences {
             subtitle: displayName !== ip ? ip : null,
         });
 
+        // Info button
+        const infoButton = new Gtk.Button({
+            icon_name: 'info-symbolic',
+            valign: Gtk.Align.CENTER,
+            css_classes: ['flat'],
+            tooltip_text: 'Show device information',
+        });
+
+        infoButton.connect('clicked', () => {
+            this._showDeviceInfo(ip, displayName, row.get_root());
+        });
+
         // Remove button
         const removeButton = new Gtk.Button({
             icon_name: 'user-trash-symbolic',
             valign: Gtk.Align.CENTER,
             css_classes: ['flat'],
+            tooltip_text: 'Remove device',
         });
 
         removeButton.connect('clicked', () => {
@@ -294,8 +307,202 @@ export default class LightyUppyPreferences extends ExtensionPreferences {
             }
         });
 
+        row.add_suffix(infoButton);
         row.add_suffix(removeButton);
 
         return row;
+    }
+
+    async _showDeviceInfo(ip, displayName, parentWindow) {
+        const light = new KeyLight(ip, displayName);
+
+        // Create dialog
+        const dialog = new Adw.Window({
+            title: 'Device Information',
+            modal: true,
+            transient_for: parentWindow,
+            default_width: 400,
+            default_height: 500,
+        });
+
+        const toolbarView = new Adw.ToolbarView();
+        dialog.set_content(toolbarView);
+
+        // Header bar
+        const headerBar = new Adw.HeaderBar();
+        toolbarView.add_top_bar(headerBar);
+
+        // Content
+        const scrolledWindow = new Gtk.ScrolledWindow({
+            vexpand: true,
+            hscrollbar_policy: Gtk.PolicyType.NEVER,
+        });
+        toolbarView.set_content(scrolledWindow);
+
+        const clamp = new Adw.Clamp({
+            maximum_size: 600,
+            margin_top: 24,
+            margin_bottom: 24,
+            margin_start: 12,
+            margin_end: 12,
+        });
+        scrolledWindow.set_child(clamp);
+
+        const contentBox = new Gtk.Box({
+            orientation: Gtk.Orientation.VERTICAL,
+            spacing: 12,
+        });
+        clamp.set_child(contentBox);
+
+        // Loading status
+        const spinner = new Gtk.Spinner({
+            spinning: true,
+            halign: Gtk.Align.CENTER,
+            margin_top: 48,
+            margin_bottom: 48,
+        });
+        contentBox.append(spinner);
+
+        const statusLabel = new Gtk.Label({
+            label: 'Loading device information...',
+            halign: Gtk.Align.CENTER,
+        });
+        contentBox.append(statusLabel);
+
+        dialog.present();
+
+        // Fetch device info
+        try {
+            const info = await light.getAccessoryInfo();
+            const state = await light.getLights();
+
+            // Clear loading UI
+            contentBox.remove(spinner);
+            contentBox.remove(statusLabel);
+
+            if (!info) {
+                const errorLabel = new Gtk.Label({
+                    label: 'Failed to retrieve device information.\nPlease check the connection.',
+                    halign: Gtk.Align.CENTER,
+                    justify: Gtk.Justification.CENTER,
+                    margin_top: 48,
+                    margin_bottom: 48,
+                });
+                contentBox.append(errorLabel);
+                return;
+            }
+
+            // Create info groups
+            const deviceGroup = new Adw.PreferencesGroup({
+                title: 'Device',
+            });
+            contentBox.append(deviceGroup);
+
+            if (info.displayName) {
+                const nameRow = new Adw.ActionRow({
+                    title: 'Display Name',
+                    subtitle: info.displayName,
+                });
+                deviceGroup.add(nameRow);
+            }
+
+            if (info.productName) {
+                const productRow = new Adw.ActionRow({
+                    title: 'Product',
+                    subtitle: info.productName,
+                });
+                deviceGroup.add(productRow);
+            }
+
+            const ipRow = new Adw.ActionRow({
+                title: 'IP Address',
+                subtitle: ip,
+            });
+            deviceGroup.add(ipRow);
+
+            // Firmware group
+            const firmwareGroup = new Adw.PreferencesGroup({
+                title: 'Firmware',
+            });
+            contentBox.append(firmwareGroup);
+
+            if (info.firmwareVersion) {
+                const fwVersionRow = new Adw.ActionRow({
+                    title: 'Version',
+                    subtitle: info.firmwareVersion.toString(),
+                });
+                firmwareGroup.add(fwVersionRow);
+            }
+
+            if (info.firmwareBuildNumber) {
+                const fwBuildRow = new Adw.ActionRow({
+                    title: 'Build Number',
+                    subtitle: info.firmwareBuildNumber.toString(),
+                });
+                firmwareGroup.add(fwBuildRow);
+            }
+
+            // Hardware group
+            const hardwareGroup = new Adw.PreferencesGroup({
+                title: 'Hardware',
+            });
+            contentBox.append(hardwareGroup);
+
+            if (info.serialNumber) {
+                const serialRow = new Adw.ActionRow({
+                    title: 'Serial Number',
+                    subtitle: info.serialNumber,
+                });
+                hardwareGroup.add(serialRow);
+            }
+
+            if (info.hardwareBoardType) {
+                const boardRow = new Adw.ActionRow({
+                    title: 'Board Type',
+                    subtitle: info.hardwareBoardType.toString(),
+                });
+                hardwareGroup.add(boardRow);
+            }
+
+            // Current state group
+            if (state) {
+                const stateGroup = new Adw.PreferencesGroup({
+                    title: 'Current State',
+                });
+                contentBox.append(stateGroup);
+
+                const powerRow = new Adw.ActionRow({
+                    title: 'Power',
+                    subtitle: state.on === 1 ? 'On' : 'Off',
+                });
+                stateGroup.add(powerRow);
+
+                const brightnessRow = new Adw.ActionRow({
+                    title: 'Brightness',
+                    subtitle: `${state.brightness}%`,
+                });
+                stateGroup.add(brightnessRow);
+
+                // Convert mireds to Kelvin
+                const kelvin = Math.round(1000000 / state.temperature);
+                const tempRow = new Adw.ActionRow({
+                    title: 'Color Temperature',
+                    subtitle: `${kelvin}K (${state.temperature} mireds)`,
+                });
+                stateGroup.add(tempRow);
+            }
+        } catch (e) {
+            console.error('Error fetching device info:', e);
+            contentBox.remove(spinner);
+            contentBox.remove(statusLabel);
+
+            const errorLabel = new Gtk.Label({
+                label: `Error: ${e.message}`,
+                halign: Gtk.Align.CENTER,
+                margin_top: 48,
+                margin_bottom: 48,
+            });
+            contentBox.append(errorLabel);
+        }
     }
 }
