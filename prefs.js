@@ -8,6 +8,7 @@ import Gio from 'gi://Gio';
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import {discoverKeyLights, isAvahiAvailable} from './discovery.js';
+import {KeyLight} from './keylight.js';
 
 export default class LightyUppyPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
@@ -38,7 +39,7 @@ export default class LightyUppyPreferences extends ExtensionPreferences {
 
         // Add existing IPs
         ips.forEach(ip => {
-            const row = this._createIpRow(ip, settings, listBox);
+            const row = this._createIpRow(ip, ip, settings, listBox);
             listBox.append(row);
         });
 
@@ -80,7 +81,8 @@ export default class LightyUppyPreferences extends ExtensionPreferences {
                     for (const light of lights) {
                         if (!currentIps.includes(light.address)) {
                             currentIps.push(light.address);
-                            const row = this._createIpRow(light.address, settings, listBox);
+                            const displayName = light.name || light.address;
+                            const row = this._createIpRow(light.address, displayName, settings, listBox);
                             listBox.append(row);
                             addedCount++;
                         }
@@ -118,15 +120,15 @@ export default class LightyUppyPreferences extends ExtensionPreferences {
             margin_top: 6,
         });
 
-        addButton.connect('clicked', () => {
+        addButton.connect('clicked', async () => {
             const dialog = new Gtk.Dialog({
                 title: 'Add Key Light',
                 transient_for: window,
                 modal: true,
             });
 
-            dialog.add_button('Cancel', Gtk.ResponseType.CANCEL);
-            dialog.add_button('Add', Gtk.ResponseType.OK);
+            const cancelButton = dialog.add_button('Cancel', Gtk.ResponseType.CANCEL);
+            const addButton = dialog.add_button('Add', Gtk.ResponseType.OK);
 
             const contentArea = dialog.get_content_area();
             contentArea.spacing = 12;
@@ -140,28 +142,114 @@ export default class LightyUppyPreferences extends ExtensionPreferences {
                 hexpand: true,
             });
 
+            const statusLabel = new Gtk.Label({
+                label: '',
+                xalign: 0,
+                css_classes: ['dim-label'],
+            });
+
             contentArea.append(new Gtk.Label({
                 label: 'Enter the IP address or hostname of your Key Light:',
                 xalign: 0,
             }));
             contentArea.append(entry);
+            contentArea.append(statusLabel);
 
-            dialog.connect('response', (dialog, response) => {
-                if (response === Gtk.ResponseType.OK) {
-                    const newIp = entry.get_text().trim();
-                    if (newIp) {
-                        const currentIps = settings.get_strv('light-ips');
-                        if (!currentIps.includes(newIp)) {
-                            currentIps.push(newIp);
+            let validationInProgress = false;
+
+            dialog.connect('response', async (dialog, response) => {
+                if (response === Gtk.ResponseType.OK && !validationInProgress) {
+                    const newAddress = entry.get_text().trim();
+                    if (!newAddress) {
+                        dialog.destroy();
+                        return;
+                    }
+
+                    // Check if already added
+                    const currentIps = settings.get_strv('light-ips');
+                    if (currentIps.includes(newAddress)) {
+                        const errorDialog = new Gtk.MessageDialog({
+                            transient_for: window,
+                            modal: true,
+                            message_type: Gtk.MessageType.WARNING,
+                            buttons: Gtk.ButtonsType.OK,
+                            text: 'Already Added',
+                            secondary_text: `${newAddress} is already in your list of lights.`,
+                        });
+                        errorDialog.present();
+                        errorDialog.connect('response', () => errorDialog.destroy());
+                        dialog.destroy();
+                        return;
+                    }
+
+                    // Prevent multiple clicks
+                    validationInProgress = true;
+                    addButton.sensitive = false;
+                    cancelButton.sensitive = false;
+                    entry.sensitive = false;
+                    statusLabel.label = 'Validating connection...';
+
+                    try {
+                        // Test the connection
+                        const testLight = new KeyLight(newAddress, newAddress);
+                        const info = await testLight.getAccessoryInfo();
+
+                        if (info) {
+                            // Success! Add the light
+                            currentIps.push(newAddress);
                             settings.set_strv('light-ips', currentIps);
 
-                            // Add to list
-                            const row = this._createIpRow(newIp, settings, listBox);
+                            // Add to list with product name if available
+                            const displayName = info.displayName || info.productName || newAddress;
+                            const row = this._createIpRow(newAddress, displayName, settings, listBox);
                             listBox.append(row);
+
+                            // Show success message
+                            statusLabel.label = `✓ Connected to ${displayName}`;
+
+                            // Close after short delay
+                            setTimeout(() => dialog.destroy(), 1000);
+                        } else {
+                            // Failed to connect
+                            statusLabel.label = '✗ Could not connect to light';
+                            addButton.sensitive = true;
+                            cancelButton.sensitive = true;
+                            entry.sensitive = true;
+                            validationInProgress = false;
+
+                            const errorDialog = new Gtk.MessageDialog({
+                                transient_for: window,
+                                modal: true,
+                                message_type: Gtk.MessageType.ERROR,
+                                buttons: Gtk.ButtonsType.OK,
+                                text: 'Connection Failed',
+                                secondary_text: `Could not connect to ${newAddress}. Please check:\n\n• The address is correct\n• The light is powered on\n• The light is on the same network\n• Port 9123 is accessible`,
+                            });
+                            errorDialog.present();
+                            errorDialog.connect('response', () => errorDialog.destroy());
                         }
+                    } catch (e) {
+                        console.error('Validation error:', e);
+                        statusLabel.label = '✗ Validation failed';
+                        addButton.sensitive = true;
+                        cancelButton.sensitive = true;
+                        entry.sensitive = true;
+                        validationInProgress = false;
+
+                        const errorDialog = new Gtk.MessageDialog({
+                            transient_for: window,
+                            modal: true,
+                            message_type: Gtk.MessageType.ERROR,
+                            buttons: Gtk.ButtonsType.OK,
+                            text: 'Validation Error',
+                            secondary_text: `Error testing connection: ${e.message}`,
+                        });
+                        errorDialog.present();
+                        errorDialog.connect('response', () => errorDialog.destroy());
                     }
+                } else {
+                    dialog.destroy();
                 }
-                dialog.destroy();
             });
 
             dialog.present();
@@ -170,9 +258,10 @@ export default class LightyUppyPreferences extends ExtensionPreferences {
         group.add(addButton);
     }
 
-    _createIpRow(ip, settings, listBox) {
+    _createIpRow(ip, displayName, settings, listBox) {
         const row = new Adw.ActionRow({
-            title: ip,
+            title: displayName,
+            subtitle: displayName !== ip ? ip : null,
         });
 
         // Remove button

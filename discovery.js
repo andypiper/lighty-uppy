@@ -19,7 +19,8 @@ export async function discoverKeyLights() {
             Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
         );
 
-        const [stdout, stderr] = await proc.communicate_utf8_async(null, null);
+        // Use synchronous communicate since avahi-browse terminates quickly
+        const [, stdout, stderr] = proc.communicate_utf8(null, null);
 
         if (!proc.get_successful()) {
             console.error(`avahi-browse failed: ${stderr}`);
