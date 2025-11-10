@@ -180,8 +180,6 @@ The extension consists of:
 ```bash
 just --list              # Show all available commands
 just install             # Install extension locally
-just test                # Test in nested GNOME Shell
-just install-and-test    # Install and test
 just pack                # Package for distribution
 just enable              # Enable extension
 just disable             # Disable extension

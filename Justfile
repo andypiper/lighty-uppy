@@ -29,14 +29,6 @@ install: compile-schemas
     @echo "Restart GNOME Shell (Alt+F2, type 'r', Enter on X11 or logout/login on Wayland)"
     @echo "Then enable with: gnome-extensions enable {{UUID}}"
 
-# Test extension in nested GNOME Shell
-test:
-    @echo "Testing extension in nested shell..."
-    @dbus-run-session -- gnome-shell --nested --wayland --wayland-display=lighty-uppy-test
-
-# Install and test
-install-and-test: install test
-
 # Update version in metadata.json
 update-version VERSION:
     @echo "Updating version to {{VERSION}}..."
